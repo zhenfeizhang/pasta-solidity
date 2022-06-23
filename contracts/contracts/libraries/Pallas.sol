@@ -22,6 +22,9 @@ library Pallas {
     uint256 public constant R_MOD =
         28948022309329048855892746252171976963363056481941647379679742748393362948097;
 
+    uint256 private constant _THREE_OVER_TWO =
+        14474011154664524427946373126085988481681528240970780357977338382174983815170;
+
     struct Point {
         uint256 x;
         uint256 y;
@@ -58,42 +61,114 @@ library Pallas {
         return R_MOD - (fr % R_MOD);
     }
 
-    /// @return r the sum of two points of G1
-    function add(Point memory p1, Point memory p2) internal view returns (Point memory r) {
-        uint256[4] memory input;
-        input[0] = p1.x;
-        input[1] = p1.y;
-        input[2] = p2.x;
-        input[3] = p2.y;
-        bool success;
-        assembly {
-            success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 {
-                revert(0, 0)
-            }
+    function double(Point memory point) internal view returns (Point memory) {
+        if (isInfinity(point)) {
+            return point;
         }
-        require(success, "Pallas: group addition failed!");
+
+        uint256 lambda;
+        uint256 x = point.x;
+        uint256 y = point.y;
+        uint256 yInv = invert(point.y, P_MOD);
+        uint256 xPrime;
+        uint256 yPrime;
+
+        assembly {
+            // lambda = 3x^2/2y
+            lambda := mulmod(x, x, P_MOD)
+            lambda := mulmod(lambda, yInv, P_MOD)
+            lambda := mulmod(lambda, _THREE_OVER_TWO, P_MOD)
+
+            // x' = lambda^2 - 2x
+            xPrime := mulmod(lambda, lambda, P_MOD)
+            xPrime := add(xPrime, P_MOD)
+            xPrime := add(xPrime, P_MOD)
+            xPrime := sub(xPrime, x)
+            xPrime := sub(xPrime, x)
+            xPrime := mod(xPrime, P_MOD)
+
+            // y' = lambda * (x-x') - y
+            yPrime := add(x, P_MOD)
+            yPrime := sub(yPrime, xPrime)
+            yPrime := mulmod(lambda, yPrime, P_MOD)
+            yPrime := add(yPrime, P_MOD)
+            yPrime := sub(yPrime, y)
+            yPrime := mod(yPrime, P_MOD)
+        }
+
+        return Point(xPrime, yPrime);
+    }
+
+    /// @return r the sum of two points of G1
+    function add(Point memory p1, Point memory p2) internal view returns (Point memory) {
+        if (isInfinity(p1)) {
+            return p2;
+        }
+
+        if (isInfinity(p2)) {
+            return p1;
+        }
+
+        uint256 lambda;
+        uint256 tmp;
+        uint256 x1 = p1.x;
+        uint256 y1 = p1.y;
+        uint256 x2 = p2.x;
+        uint256 y2 = p2.y;
+        uint256 x3;
+        uint256 y3;
+
+        // lambda = (y1-y2)/(x1-x2)
+        assembly {
+            lambda := add(x1, P_MOD)
+            lambda := sub(lambda, x2)
+            tmp := add(y1, P_MOD)
+            tmp := sub(tmp, y2)
+        }
+        if (lambda > P_MOD) {
+            lambda -= P_MOD;
+        }
+        lambda = invert(lambda, P_MOD);
+        assembly {
+            // lambda = (y1-y2)/(x1-x2)
+            lambda := mulmod(lambda, tmp, P_MOD)
+
+            // x3 = lambda^2 - x1 - x2
+            x3 := mulmod(lambda, lambda, P_MOD)
+            x3 := add(x3, P_MOD)
+            x3 := add(x3, P_MOD)
+            x3 := sub(x3, x1)
+            x3 := sub(x3, x2)
+            x3 := mod(x3, P_MOD)
+
+            // y' = lambda * (x-x') - y
+            y3 := add(x1, P_MOD)
+            y3 := sub(y3, x3)
+            y3 := mulmod(lambda, y3, P_MOD)
+            y3 := add(y3, P_MOD)
+            y3 := sub(y3, y1)
+            y3 := mod(y3, P_MOD)
+        }
+
+        return Point(x3, y3);
     }
 
     /// @return r the product of a point on G1 and a scalar, i.e.
     /// p == p.mul(1) and p.add(p) == p.mul(2) for all points p.
     function scalarMul(Point memory p, uint256 s) internal view returns (Point memory r) {
-        uint256[3] memory input;
-        input[0] = p.x;
-        input[1] = p.y;
-        input[2] = s;
-        bool success;
-        assembly {
-            success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 {
-                revert(0, 0)
+        uint256 bit;
+        uint256 i = 0;
+        Point memory tmp = p;
+        r = Point(0, 0);
+
+        for (i = 0; i < 256; i++) {
+            bit = s & 1;
+            s /= 2;
+            if (bit == 1) {
+                r = add(r, tmp);
             }
+            tmp = double(tmp);
         }
-        require(success, "Pallas: scalar mul failed!");
     }
 
     /// @dev Multi-scalar Mulitiplication (MSM)
@@ -113,17 +188,16 @@ library Pallas {
 
     /// @dev Compute f^-1 for f \in Fr scalar field
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
-    function invert(uint256 fr) internal view returns (uint256 output) {
+    function invert(uint256 fr, uint256 modulus) internal view returns (uint256 output) {
         bool success;
-        uint256 p = R_MOD;
         assembly {
             let mPtr := mload(0x40)
             mstore(mPtr, 0x20)
             mstore(add(mPtr, 0x20), 0x20)
             mstore(add(mPtr, 0x40), 0x20)
             mstore(add(mPtr, 0x60), fr)
-            mstore(add(mPtr, 0x80), sub(p, 2))
-            mstore(add(mPtr, 0xa0), p)
+            mstore(add(mPtr, 0x80), sub(modulus, 2))
+            mstore(add(mPtr, 0xa0), modulus)
             success := staticcall(gas(), 0x05, mPtr, 0xc0, 0x00, 0x20)
             output := mload(0x00)
         }

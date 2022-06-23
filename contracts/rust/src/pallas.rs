@@ -172,7 +172,13 @@ async fn test_invert() -> Result<()> {
     for _ in 0..10 {
         let f = Fr::rand(rng);
         assert_eq!(
-            contract.invert(field_to_u256(f)).call().await?,
+            contract.invert_fr(field_to_u256(f)).call().await?,
+            field_to_u256(f.inverse().unwrap())
+        );
+
+        let f = Fq::rand(rng);
+        assert_eq!(
+            contract.invert_fq(field_to_u256(f)).call().await?,
             field_to_u256(f.inverse().unwrap())
         );
     }
@@ -298,5 +304,21 @@ async fn test_pow_small() -> Result<()> {
             field_to_u256(base.pow([exponent])),
         );
     }
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_doubling() -> Result<()> {
+    let rng = &mut ark_std::test_rng();
+    let contract = deploy_contract().await?;
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let p2 = ProjectiveCurve::double(&p);
+
+        let res: Point = contract.double(p.into_affine().into()).call().await?.into();
+        assert_eq!(res, p2.into_affine().into());
+    }
+
     Ok(())
 }

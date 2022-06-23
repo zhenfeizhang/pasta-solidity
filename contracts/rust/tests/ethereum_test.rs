@@ -17,13 +17,6 @@ async fn deploy_contract() -> Result<Greeter<SignerMiddleware<Provider<Http>, Wa
 }
 
 #[tokio::test]
-async fn test_basic_contract_deployment() {
-    let contract = deploy_contract().await.unwrap();
-    let res: String = contract.greet().call().await.unwrap().into();
-    assert_eq!(res, "Initial Greeting")
-}
-
-#[tokio::test]
 async fn test_basic_contract_transaction() {
     let contract = deploy_contract().await.unwrap();
     let _receipt = contract

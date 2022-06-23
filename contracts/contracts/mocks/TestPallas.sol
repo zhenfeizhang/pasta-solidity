@@ -19,6 +19,10 @@ contract TestPallas {
         return C.negate(p);
     }
 
+    function double(C.Point memory p) public view returns (C.Point memory) {
+        return C.double(p);
+    }
+
     function add(C.Point memory p1, C.Point memory p2) public view returns (C.Point memory) {
         return C.add(p1, p2);
     }
@@ -27,8 +31,12 @@ contract TestPallas {
         return C.scalarMul(p, s);
     }
 
-    function invert(uint256 fr) public view returns (uint256 output) {
-        return C.invert(fr);
+    function invertFr(uint256 fr) public view returns (uint256 output) {
+        return C.invert(fr, C.R_MOD);
+    }
+
+    function invertFq(uint256 fq) public view returns (uint256 output) {
+        return C.invert(fq, C.P_MOD);
     }
 
     function validateCurvePoint(C.Point memory point) public pure {
