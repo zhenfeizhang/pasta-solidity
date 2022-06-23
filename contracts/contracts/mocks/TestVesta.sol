@@ -1,40 +1,40 @@
 //SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import {Pallas as C} from "../libraries/Pallas.sol";
+import {Vesta as C} from "../libraries/Vesta.sol";
 
-contract TestPallas {
+contract TestVesta {
     constructor() {}
 
     // solhint-disable-next-line func-name-mixedcase
-    function P1() public pure returns (C.PallasPoint memory) {
+    function P1() public pure returns (C.VestaPoint memory) {
         return C.P1();
     }
 
-    function isInfinity(C.PallasPoint memory point) public pure returns (bool) {
+    function isInfinity(C.VestaPoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }
 
-    function negate(C.PallasPoint memory p) public pure returns (C.PallasPoint memory r) {
+    function negate(C.VestaPoint memory p) public pure returns (C.VestaPoint memory r) {
         return C.negate(p);
     }
 
-    function double(C.PallasPoint memory p) public view returns (C.PallasPoint memory) {
+    function double(C.VestaPoint memory p) public view returns (C.VestaPoint memory) {
         return C.double(p);
     }
 
-    function add(C.PallasPoint memory p1, C.PallasPoint memory p2)
+    function add(C.VestaPoint memory p1, C.VestaPoint memory p2)
         public
         view
-        returns (C.PallasPoint memory)
+        returns (C.VestaPoint memory)
     {
         return C.add(p1, p2);
     }
 
-    function scalarMul(C.PallasPoint memory p, uint256 s)
+    function scalarMul(C.VestaPoint memory p, uint256 s)
         public
         view
-        returns (C.PallasPoint memory r)
+        returns (C.VestaPoint memory r)
     {
         return C.scalarMul(p, s);
     }
@@ -47,7 +47,7 @@ contract TestPallas {
         return C.invert(fq, C.P_MOD);
     }
 
-    function validateCurvePoint(C.PallasPoint memory point) public pure {
+    function validateCurvePoint(C.VestaPoint memory point) public pure {
         C.validateCurvePoint(point);
     }
 
@@ -59,7 +59,7 @@ contract TestPallas {
         return C.fromLeBytesModOrder(leBytes);
     }
 
-    function isYNegative(C.PallasPoint memory p) public pure returns (bool) {
+    function isYNegative(C.VestaPoint memory p) public pure returns (bool) {
         return C.isYNegative(p);
     }
 
@@ -71,10 +71,10 @@ contract TestPallas {
         return C.powSmall(base, exponent, modulus);
     }
 
-    function testMultiScalarMul(C.PallasPoint[] memory bases, uint256[] memory scalars)
+    function testMultiScalarMul(C.VestaPoint[] memory bases, uint256[] memory scalars)
         public
         view
-        returns (C.PallasPoint memory)
+        returns (C.VestaPoint memory)
     {
         return C.multiScalarMul(bases, scalars);
     }

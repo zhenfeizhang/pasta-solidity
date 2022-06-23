@@ -1,6 +1,6 @@
 use anyhow::Result;
-use cap_rust_sandbox::{ethereum::*, types::Greeter};
 use ethers::{core::k256::ecdsa::SigningKey, prelude::*};
+use rust_sandbox::{ethereum::*, types::Greeter};
 use std::path::Path;
 
 async fn deploy_contract() -> Result<Greeter<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>>

@@ -3,7 +3,7 @@
 use crate::{
     assertion::Matcher,
     ethereum::{deploy, get_funded_deployer},
-    types::{field_to_u256, PallasPoint as Point, TestPallas},
+    types::{field_to_u256, TestVesta, VestaPoint as Point},
 };
 use anyhow::Result;
 use ark_ec::msm::VariableBaseMSM;
@@ -11,25 +11,25 @@ use ark_ec::AffineCurve;
 use ark_ec::{group::Group, ProjectiveCurve};
 use ark_ff::{field_new, to_bytes, Field};
 use ark_ff::{FpParameters, PrimeField};
-use ark_pallas::{Affine, Fq, Fr, Projective};
 use ark_std::UniformRand;
 use ark_std::Zero;
+use ark_vesta::{Affine, Fq, Fr, Projective};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use rand::RngCore;
 use std::path::Path;
 
-async fn deploy_contract(
-) -> Result<TestPallas<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>> {
+async fn deploy_contract() -> Result<TestVesta<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>>
+{
     let client = get_funded_deployer().await.unwrap();
     let contract = deploy(
         client.clone(),
-        Path::new("../abi/contracts/mocks/TestPallas.sol/TestPallas"),
+        Path::new("../abi/contracts/mocks/TestVesta.sol/TestVesta"),
         (),
     )
     .await
     .unwrap();
-    Ok(TestPallas::new(contract.address(), client))
+    Ok(TestVesta::new(contract.address(), client))
 }
 
 #[tokio::test]
@@ -193,7 +193,7 @@ async fn test_validate_curve_point() -> Result<()> {
     contract.validate_curve_point(p.into()).call().await?;
 
     async fn should_fail_validation(
-        contract: &TestPallas<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
+        contract: &TestVesta<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
         bad_p: Point,
     ) {
         contract
@@ -242,7 +242,7 @@ async fn test_validate_scalar_field() -> Result<()> {
     contract
         .validate_scalar_field(
             U256::from_str_radix(
-                "28948022309329048855892746252171976963363056481941647379679742748393362948097",
+                "28948022309329048855892746252171976963363056481941560715954676764349967630337",
                 10,
             )
             .unwrap(),
