@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pasta-test-geth
+pasta-test-hardhat

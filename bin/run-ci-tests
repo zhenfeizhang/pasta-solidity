@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+lint-ci
+pasta-test-geth
+
+echo Ok!

@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    subprocess.check_call(["hardhat", "compile"])
+except subprocess.CalledProcessError as exc:
+    print("Command 'hardhat compile' failed")
+    sys.exit(exc.returncode)
+
+# hardhat removes files in artifacts directory when compiling -> put these files elsewhere
+contracts_dir = Path(os.environ["CONTRACTS_DIR"])
+abi_dir = contracts_dir / "abi"
+artifacts_dir = contracts_dir / "artifacts"
+
+# For each solidity file (respectively its artifact output directory)
+for directory in artifacts_dir.rglob("*.sol"):
+
+    for hardhat_json in directory.glob("*.json"):
+        if str(hardhat_json).endswith(".dbg.json"):
+            continue
+
+        contract_name = hardhat_json.stem
+        contract_file = hardhat_json.parent
+        out_dir = abi_dir / contract_file.relative_to(artifacts_dir) / contract_name
+
+        abi_out = out_dir / "abi.json"
+
+        if abi_out.exists() and abi_out.stat().st_mtime > hardhat_json.stat().st_mtime:
+            print(f"Up to date: {contract_name}")
+            continue
+
+        print(f"Extracting ABI for {contract_name}")
+
+        os.makedirs(out_dir, exist_ok=True)
+
+        with open(hardhat_json) as f:
+            output = json.load(f)
+
+        with open(abi_out, "w") as f:
+            json.dump(output["abi"], f)
+
+        with open(out_dir / "bin.txt", "w") as f:
+            print(output["bytecode"], file=f)
+
+
+print("Finished extracting ABIs")

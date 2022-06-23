@@ -1,0 +1,31 @@
+.idea
+node_modules
+/artifacts
+cache
+.env
+**/*.DS_Store
+.log/
+
+# direnv cache
+.direnv/
+
+# prevent our formatters from formatting code in submodule
+/arbitrum
+
+# rust
+Cargo.lock
+target/
+rust/my_note.bin
+
+# python / brownie
+build/
+__pycache__/
+*.py[cod]
+
+# typescript contract bindings
+typechain-types/
+
+deployments/localhost/
+
+# TODO: remove this when build-abi script is removed
+/abi/

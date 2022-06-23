@@ -1,0 +1,38 @@
+[formatter.nix]
+command = "nixpkgs-fmt"
+includes = ["**/*.nix"]
+
+[formatter.rust]
+command = "rustfmt"
+includes = ["**/*.rs"]
+
+[formatter.python]
+command = "black"
+includes = [
+  "**/*.py",
+  "bin/hdwallet-derive",
+  "bin/make-genesis-block",
+  "bin/build-abi",
+]
+
+[formatter.prettier]
+command = "prettier"
+options = ["-w"]
+includes = [
+  "**/*.js",
+  "**/*.ts",
+  "**/*.sol",
+  "**/*.md",
+  "**/*.mdx",
+  "**/*.yaml",
+  "**/*.json",
+]
+
+[formatter.contract]
+command = "solhint"
+options = ["-c", "contracts/.solhint.json", "--fix"]
+includes = ["contracts/**/*.sol"]
+
+[formatter.package_json]
+command = "sort-package-json"
+includes = ["**/package.json"]

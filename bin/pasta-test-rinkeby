@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# TODO sometimes fails with
+#       message: replacement transaction underpriced
+
+env MNEMONIC="$RINKEBY_MNEMONIC" RPC_URL="$RINKEBY_URL" \
+    cargo test --release \
+    -- --test-threads=1 # Otherwise fails with nonce too low error
