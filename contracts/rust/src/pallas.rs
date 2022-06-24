@@ -99,6 +99,16 @@ async fn test_scalar_mul() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
 
+    let p = Projective::rand(rng);
+    let s = Fr::rand(rng);
+    println!(
+        "gas cost: scalar mul: {}",
+        contract
+            .scalar_mul(p.into_affine().into(), field_to_u256(s))
+            .estimate_gas()
+            .await?
+    );
+
     for _ in 0..10 {
         let p = Projective::rand(rng);
         let s = Fr::rand(rng);
@@ -190,6 +200,14 @@ async fn test_validate_curve_point() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
     let p: Affine = Projective::rand(rng).into();
+
+    println!(
+        "gas cost: is_on_curve: {}",
+        contract
+            .validate_curve_point(p.into())
+            .estimate_gas()
+            .await?
+    );
     contract.validate_curve_point(p.into()).call().await?;
 
     async fn should_fail_validation(
@@ -312,12 +330,52 @@ async fn test_doubling() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
 
+    let p = Projective::rand(rng);
+    println!(
+        "gas cost: doubling: {}",
+        contract
+            .double(p.into_affine().into())
+            .estimate_gas()
+            .await?
+    );
+
     for _ in 0..10 {
         let p = Projective::rand(rng);
         let p2 = ProjectiveCurve::double(&p);
 
         let res: Point = contract.double(p.into_affine().into()).call().await?.into();
         assert_eq!(res, p2.into_affine().into());
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_addition() -> Result<()> {
+    let rng = &mut ark_std::test_rng();
+    let contract = deploy_contract().await?;
+
+    let p1 = Projective::rand(rng);
+    let p2 = Projective::rand(rng);
+    println!(
+        "gas cost: addition: {}",
+        contract
+            .add(p1.into_affine().into(), p2.into_affine().into())
+            .estimate_gas()
+            .await?
+    );
+
+    for _ in 0..10 {
+        let p1 = Projective::rand(rng);
+        let p2 = Projective::rand(rng);
+        let res_rec = p1 + p2;
+
+        let res: Point = contract
+            .add(p1.into_affine().into(), p2.into_affine().into())
+            .call()
+            .await?
+            .into();
+        assert_eq!(res, res_rec.into_affine().into());
     }
 
     Ok(())
