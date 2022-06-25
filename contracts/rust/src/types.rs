@@ -20,10 +20,10 @@ abigen!(
     event_derives(serde::Deserialize, serde::Serialize);
 );
 
-impl From<Affine> for PallasPoint {
+impl From<Affine> for PallasAffinePoint {
     fn from(p: Affine) -> Self {
         if p.is_zero() {
-            // Solidity precompile have a different affine repr for PallasPoint of Infinity
+            // Solidity precompile have a different affine repr for PallasAffinePoint of Infinity
             Self {
                 x: U256::from(0),
                 y: U256::from(0),
@@ -37,7 +37,7 @@ impl From<Affine> for PallasPoint {
     }
 }
 
-impl From<(Fq, Fq)> for PallasPoint {
+impl From<(Fq, Fq)> for PallasAffinePoint {
     fn from(p: (Fq, Fq)) -> Self {
         let zero = Affine::zero();
         if p.0 == zero.x && p.1 == zero.y {
@@ -55,8 +55,8 @@ impl From<(Fq, Fq)> for PallasPoint {
     }
 }
 
-impl From<PallasPoint> for Affine {
-    fn from(p_sol: PallasPoint) -> Self {
+impl From<PallasAffinePoint> for Affine {
+    fn from(p_sol: PallasAffinePoint) -> Self {
         if p_sol.x.is_zero() && p_sol.y.is_zero() {
             Self::zero()
         } else {
@@ -65,10 +65,10 @@ impl From<PallasPoint> for Affine {
     }
 }
 
-impl From<ark_vesta::Affine> for VestaPoint {
+impl From<ark_vesta::Affine> for VestaAffinePoint {
     fn from(p: ark_vesta::Affine) -> Self {
         if p.is_zero() {
-            // Solidity precompile have a different affine repr for VestaPoint of Infinity
+            // Solidity precompile have a different affine repr for VestaAffinePoint of Infinity
             Self {
                 x: U256::from(0),
                 y: U256::from(0),
@@ -82,7 +82,7 @@ impl From<ark_vesta::Affine> for VestaPoint {
     }
 }
 
-impl From<(Fr, Fr)> for VestaPoint {
+impl From<(Fr, Fr)> for VestaAffinePoint {
     fn from(p: (Fr, Fr)) -> Self {
         let zero = ark_vesta::Affine::zero();
         if p.0 == zero.x && p.1 == zero.y {
@@ -100,8 +100,8 @@ impl From<(Fr, Fr)> for VestaPoint {
     }
 }
 
-impl From<VestaPoint> for ark_vesta::Affine {
-    fn from(p_sol: VestaPoint) -> Self {
+impl From<VestaAffinePoint> for ark_vesta::Affine {
+    fn from(p_sol: VestaAffinePoint) -> Self {
         if p_sol.x.is_zero() && p_sol.y.is_zero() {
             Self::zero()
         } else {
@@ -125,7 +125,7 @@ pub fn u256_to_field<F: PrimeField>(v: U256) -> F {
     F::from_le_bytes_mod_order(&bytes)
 }
 
-/// a helper trait to help with fully-qualified generic into synatx:
+/// a helper trait to help with fully-qualified generic into syntax:
 /// `x.generic_into::<DestType>();`
 /// This is particularly helpful in a chained `generic_into()` statements.
 pub trait GenericInto {
@@ -170,28 +170,28 @@ mod test {
     fn group_types_conversion() {
         // special case: point of infinity (zero)
         let p1 = Affine::default();
-        let p1_sol: PallasPoint = p1.into();
+        let p1_sol: PallasAffinePoint = p1.into();
         assert_eq!(p1_sol.x, U256::from(0));
         assert_eq!(p1_sol.y, U256::from(0));
         assert_eq!(p1, p1_sol.generic_into::<Affine>());
 
         // a point (not on the curve, which doesn't matter since we only check conversion)
         let p2 = Affine::new(field_new!(Fq, "12345"), field_new!(Fq, "2"), false);
-        let p2_sol: PallasPoint = p2.into();
+        let p2_sol: PallasAffinePoint = p2.into();
         assert_eq!(p2_sol.x, U256::from(12345));
         assert_eq!(p2_sol.y, U256::from(2));
         assert_eq!(p2, p2_sol.generic_into::<Affine>());
 
         // special case: point of infinity (zero)
         let p1 = ark_vesta::Affine::default();
-        let p1_sol: VestaPoint = p1.into();
+        let p1_sol: VestaAffinePoint = p1.into();
         assert_eq!(p1_sol.x, U256::from(0));
         assert_eq!(p1_sol.y, U256::from(0));
         assert_eq!(p1, p1_sol.generic_into::<ark_vesta::Affine>());
 
         // a point (not on the curve, which doesn't matter since we only check conversion)
         let p2 = ark_vesta::Affine::new(field_new!(Fr, "12345"), field_new!(Fr, "2"), false);
-        let p2_sol: VestaPoint = p2.into();
+        let p2_sol: VestaAffinePoint = p2.into();
         assert_eq!(p2_sol.x, U256::from(12345));
         assert_eq!(p2_sol.y, U256::from(2));
         assert_eq!(p2, p2_sol.generic_into::<ark_vesta::Affine>());

@@ -7,34 +7,42 @@ contract TestPallas {
     constructor() {}
 
     // solhint-disable-next-line func-name-mixedcase
-    function P1() public pure returns (C.PallasPoint memory) {
+    function P1() public pure returns (C.PallasAffinePoint memory) {
         return C.P1();
     }
 
-    function isInfinity(C.PallasPoint memory point) public pure returns (bool) {
+    function isInfinity(C.PallasAffinePoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }
 
-    function negate(C.PallasPoint memory p) public pure returns (C.PallasPoint memory r) {
+    function negate(C.PallasAffinePoint memory p)
+        public
+        pure
+        returns (C.PallasAffinePoint memory r)
+    {
         return C.negate(p);
     }
 
-    function double(C.PallasPoint memory p) public view returns (C.PallasPoint memory) {
+    function double(C.PallasAffinePoint memory p)
+        public
+        view
+        returns (C.PallasAffinePoint memory)
+    {
         return C.double(p);
     }
 
-    function add(C.PallasPoint memory p1, C.PallasPoint memory p2)
+    function add(C.PallasAffinePoint memory p1, C.PallasAffinePoint memory p2)
         public
         view
-        returns (C.PallasPoint memory)
+        returns (C.PallasAffinePoint memory)
     {
         return C.add(p1, p2);
     }
 
-    function scalarMul(C.PallasPoint memory p, uint256 s)
+    function scalarMul(C.PallasAffinePoint memory p, uint256 s)
         public
         view
-        returns (C.PallasPoint memory r)
+        returns (C.PallasAffinePoint memory r)
     {
         return C.scalarMul(p, s);
     }
@@ -47,7 +55,7 @@ contract TestPallas {
         return C.invert(fq, C.P_MOD);
     }
 
-    function validateCurvePoint(C.PallasPoint memory point) public pure {
+    function validateCurvePoint(C.PallasAffinePoint memory point) public pure {
         C.validateCurvePoint(point);
     }
 
@@ -59,7 +67,7 @@ contract TestPallas {
         return C.fromLeBytesModOrder(leBytes);
     }
 
-    function isYNegative(C.PallasPoint memory p) public pure returns (bool) {
+    function isYNegative(C.PallasAffinePoint memory p) public pure returns (bool) {
         return C.isYNegative(p);
     }
 
@@ -71,10 +79,10 @@ contract TestPallas {
         return C.powSmall(base, exponent, modulus);
     }
 
-    function testMultiScalarMul(C.PallasPoint[] memory bases, uint256[] memory scalars)
+    function testMultiScalarMul(C.PallasAffinePoint[] memory bases, uint256[] memory scalars)
         public
         view
-        returns (C.PallasPoint memory)
+        returns (C.PallasAffinePoint memory)
     {
         return C.multiScalarMul(bases, scalars);
     }

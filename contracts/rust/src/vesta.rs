@@ -3,7 +3,7 @@
 use crate::{
     assertion::Matcher,
     ethereum::{deploy, get_funded_deployer},
-    types::{field_to_u256, TestVesta, VestaPoint as Point},
+    types::{field_to_u256, TestVesta, VestaAffinePoint as Point},
 };
 use anyhow::Result;
 use ark_ec::msm::VariableBaseMSM;

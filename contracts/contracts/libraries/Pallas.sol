@@ -24,22 +24,22 @@ library Pallas {
     uint256 private constant _THREE_OVER_TWO =
         14474011154664524427946373126085988481681528240970780357977338382174983815170;
 
-    struct PallasPoint {
+    struct PallasAffinePoint {
         uint256 x;
         uint256 y;
     }
 
     /// @return the generator
     // solhint-disable-next-line func-name-mixedcase
-    function P1() internal pure returns (PallasPoint memory) {
-        return PallasPoint(P_MOD - 1, 2);
+    function P1() internal pure returns (PallasAffinePoint memory) {
+        return PallasAffinePoint(P_MOD - 1, 2);
     }
 
-    /// @dev check if a PallasPoint is Infinity
-    /// @notice precompile bn256Add at address(6) takes (0, 0) as PallasPoint of Infinity,
+    /// @dev check if a PallasAffinePoint is Infinity
+    /// @notice precompile bn256Add at address(6) takes (0, 0) as PallasAffinePoint of Infinity,
     /// some crypto libraries (such as arkwork) uses a boolean flag to mark PoI, and
     /// just use (0, 1) as affine coordinates (not on curve) to represents PoI.
-    function isInfinity(PallasPoint memory point) internal pure returns (bool result) {
+    function isInfinity(PallasAffinePoint memory point) internal pure returns (bool result) {
         assembly {
             let x := mload(point)
             let y := mload(add(point, 0x20))
@@ -48,11 +48,11 @@ library Pallas {
     }
 
     /// @return r the negation of p, i.e. p.add(p.negate()) should be zero.
-    function negate(PallasPoint memory p) internal pure returns (PallasPoint memory) {
+    function negate(PallasAffinePoint memory p) internal pure returns (PallasAffinePoint memory) {
         if (isInfinity(p)) {
             return p;
         }
-        return PallasPoint(p.x, P_MOD - (p.y % P_MOD));
+        return PallasAffinePoint(p.x, P_MOD - (p.y % P_MOD));
     }
 
     /// @return res = -fr the negation of scalar field element.
@@ -60,7 +60,11 @@ library Pallas {
         return R_MOD - (fr % R_MOD);
     }
 
-    function double(PallasPoint memory point) internal view returns (PallasPoint memory) {
+    function double(PallasAffinePoint memory point)
+        internal
+        view
+        returns (PallasAffinePoint memory)
+    {
         if (isInfinity(point)) {
             return point;
         }
@@ -95,14 +99,14 @@ library Pallas {
             yPrime := mod(yPrime, P_MOD)
         }
 
-        return PallasPoint(xPrime, yPrime);
+        return PallasAffinePoint(xPrime, yPrime);
     }
 
-    /// @return r the sum of two PallasPoints
-    function add(PallasPoint memory p1, PallasPoint memory p2)
+    /// @return r the sum of two PallasAffinePoints
+    function add(PallasAffinePoint memory p1, PallasAffinePoint memory p2)
         internal
         view
-        returns (PallasPoint memory)
+        returns (PallasAffinePoint memory)
     {
         if (isInfinity(p1)) {
             return p2;
@@ -153,20 +157,20 @@ library Pallas {
             y3 := mod(y3, P_MOD)
         }
 
-        return PallasPoint(x3, y3);
+        return PallasAffinePoint(x3, y3);
     }
 
-    /// @return r the product of a PallasPoint on Pallas and a scalar, i.e.
-    /// p == p.mul(1) and p.add(p) == p.mul(2) for all PallasPoints p.
-    function scalarMul(PallasPoint memory p, uint256 s)
+    /// @return r the product of a PallasAffinePoint on Pallas and a scalar, i.e.
+    /// p == p.mul(1) and p.add(p) == p.mul(2) for all PallasAffinePoints p.
+    function scalarMul(PallasAffinePoint memory p, uint256 s)
         internal
         view
-        returns (PallasPoint memory r)
+        returns (PallasAffinePoint memory r)
     {
         uint256 bit;
         uint256 i = 0;
-        PallasPoint memory tmp = p;
-        r = PallasPoint(0, 0);
+        PallasAffinePoint memory tmp = p;
+        r = PallasAffinePoint(0, 0);
 
         for (i = 0; i < 256; i++) {
             bit = s & 1;
@@ -180,10 +184,10 @@ library Pallas {
 
     /// @dev Multi-scalar Mulitiplication (MSM)
     /// @return r = \Prod{B_i^s_i} where {s_i} are `scalars` and {B_i} are `bases`
-    function multiScalarMul(PallasPoint[] memory bases, uint256[] memory scalars)
+    function multiScalarMul(PallasAffinePoint[] memory bases, uint256[] memory scalars)
         internal
         view
-        returns (PallasPoint memory r)
+        returns (PallasAffinePoint memory r)
     {
         require(scalars.length == bases.length, "MSM error: length does not match");
 
@@ -219,9 +223,9 @@ library Pallas {
      *   y < p
      *   y^2 = x^3 + 5 mod p
      */
-    /// @dev validate PallasPoint and check if it is on curve
+    /// @dev validate PallasAffinePoint and check if it is on curve
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
-    function validateCurvePoint(PallasPoint memory point) internal pure {
+    function validateCurvePoint(PallasAffinePoint memory point) internal pure {
         bool isWellFormed;
         uint256 p = P_MOD;
         assembly {
@@ -254,8 +258,8 @@ library Pallas {
         }
     }
 
-    /// @dev Check if y-coordinate of PallasPoint is negative.
-    function isYNegative(PallasPoint memory point) internal pure returns (bool) {
+    /// @dev Check if y-coordinate of PallasAffinePoint is negative.
+    function isYNegative(PallasAffinePoint memory point) internal pure returns (bool) {
         return point.y < P_MOD / 2;
     }
 

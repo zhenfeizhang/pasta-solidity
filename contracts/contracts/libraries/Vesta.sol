@@ -24,22 +24,22 @@ library Vesta {
     uint256 private constant _THREE_OVER_TWO =
         14474011154664524427946373126085988481681528240970823689839871374196681474050;
 
-    struct VestaPoint {
+    struct VestaAffinePoint {
         uint256 x;
         uint256 y;
     }
 
     /// @return the generator
     // solhint-disable-next-line func-name-mixedcase
-    function P1() internal pure returns (VestaPoint memory) {
-        return VestaPoint(P_MOD - 1, 2);
+    function P1() internal pure returns (VestaAffinePoint memory) {
+        return VestaAffinePoint(P_MOD - 1, 2);
     }
 
-    /// @dev check if a VestaPoint is Infinity
-    /// @notice precompile bn256Add at address(6) takes (0, 0) as VestaPoint of Infinity,
+    /// @dev check if a VestaAffinePoint is Infinity
+    /// @notice precompile bn256Add at address(6) takes (0, 0) as VestaAffinePoint of Infinity,
     /// some crypto libraries (such as arkwork) uses a boolean flag to mark PoI, and
     /// just use (0, 1) as affine coordinates (not on curve) to represents PoI.
-    function isInfinity(VestaPoint memory point) internal pure returns (bool result) {
+    function isInfinity(VestaAffinePoint memory point) internal pure returns (bool result) {
         assembly {
             let x := mload(point)
             let y := mload(add(point, 0x20))
@@ -48,11 +48,11 @@ library Vesta {
     }
 
     /// @return r the negation of p, i.e. p.add(p.negate()) should be zero.
-    function negate(VestaPoint memory p) internal pure returns (VestaPoint memory) {
+    function negate(VestaAffinePoint memory p) internal pure returns (VestaAffinePoint memory) {
         if (isInfinity(p)) {
             return p;
         }
-        return VestaPoint(p.x, P_MOD - (p.y % P_MOD));
+        return VestaAffinePoint(p.x, P_MOD - (p.y % P_MOD));
     }
 
     /// @return res = -fr the negation of scalar field element.
@@ -60,7 +60,11 @@ library Vesta {
         return R_MOD - (fr % R_MOD);
     }
 
-    function double(VestaPoint memory point) internal view returns (VestaPoint memory) {
+    function double(VestaAffinePoint memory point)
+        internal
+        view
+        returns (VestaAffinePoint memory)
+    {
         if (isInfinity(point)) {
             return point;
         }
@@ -95,14 +99,14 @@ library Vesta {
             yPrime := mod(yPrime, P_MOD)
         }
 
-        return VestaPoint(xPrime, yPrime);
+        return VestaAffinePoint(xPrime, yPrime);
     }
 
-    /// @return r the sum of two VestaPoints
-    function add(VestaPoint memory p1, VestaPoint memory p2)
+    /// @return r the sum of two VestaAffinePoints
+    function add(VestaAffinePoint memory p1, VestaAffinePoint memory p2)
         internal
         view
-        returns (VestaPoint memory)
+        returns (VestaAffinePoint memory)
     {
         if (isInfinity(p1)) {
             return p2;
@@ -153,20 +157,20 @@ library Vesta {
             y3 := mod(y3, P_MOD)
         }
 
-        return VestaPoint(x3, y3);
+        return VestaAffinePoint(x3, y3);
     }
 
-    /// @return r the product of a VestaPoint and a scalar, i.e.
-    /// p == p.mul(1) and p.add(p) == p.mul(2) for all VestaPoints p.
-    function scalarMul(VestaPoint memory p, uint256 s)
+    /// @return r the product of a VestaAffinePoint and a scalar, i.e.
+    /// p == p.mul(1) and p.add(p) == p.mul(2) for all VestaAffinePoints p.
+    function scalarMul(VestaAffinePoint memory p, uint256 s)
         internal
         view
-        returns (VestaPoint memory r)
+        returns (VestaAffinePoint memory r)
     {
         uint256 bit;
         uint256 i = 0;
-        VestaPoint memory tmp = p;
-        r = VestaPoint(0, 0);
+        VestaAffinePoint memory tmp = p;
+        r = VestaAffinePoint(0, 0);
 
         for (i = 0; i < 256; i++) {
             bit = s & 1;
@@ -180,10 +184,10 @@ library Vesta {
 
     /// @dev Multi-scalar Mulitiplication (MSM)
     /// @return r = \Prod{B_i^s_i} where {s_i} are `scalars` and {B_i} are `bases`
-    function multiScalarMul(VestaPoint[] memory bases, uint256[] memory scalars)
+    function multiScalarMul(VestaAffinePoint[] memory bases, uint256[] memory scalars)
         internal
         view
-        returns (VestaPoint memory r)
+        returns (VestaAffinePoint memory r)
     {
         require(scalars.length == bases.length, "MSM error: length does not match");
 
@@ -219,9 +223,9 @@ library Vesta {
      *   y < p
      *   y^2 = x^3 + 5 mod p
      */
-    /// @dev validate VestaPoint and check if it is on curve
+    /// @dev validate VestaAffinePoint and check if it is on curve
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
-    function validateCurvePoint(VestaPoint memory point) internal pure {
+    function validateCurvePoint(VestaAffinePoint memory point) internal pure {
         bool isWellFormed;
         uint256 p = P_MOD;
         assembly {
@@ -254,8 +258,8 @@ library Vesta {
         }
     }
 
-    /// @dev Check if y-coordinate of VestaPoint is negative.
-    function isYNegative(VestaPoint memory point) internal pure returns (bool) {
+    /// @dev Check if y-coordinate of VestaAffinePoint is negative.
+    function isYNegative(VestaAffinePoint memory point) internal pure returns (bool) {
         return point.y < P_MOD / 2;
     }
 
