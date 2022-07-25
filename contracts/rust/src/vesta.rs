@@ -130,12 +130,8 @@ async fn test_info_affine() -> Result<()> {
     let p = Projective::rand(rng);
     println!(
         "gas cost: to affine: {}",
-        contract
-            .to_affine(p.into())
-            .estimate_gas()
-            .await?
+        contract.to_affine(p.into()).estimate_gas().await?
     );
-
 
     for _ in 0..10 {
         let p = Projective::rand(rng);

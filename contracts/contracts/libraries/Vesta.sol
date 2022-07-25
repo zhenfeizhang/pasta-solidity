@@ -329,7 +329,7 @@ library Vesta {
 
             // X3 = r^2 - J - 2*V
             x3 := mulmod(r, r, P_MOD)
-            let tripleP :=mul(P_MOD, 3)
+            let tripleP := mul(P_MOD, 3)
             x3 := addmod(x3, sub(tripleP, add(j, add(v, v))), P_MOD)
 
             // Y3 = r*(V - X3) - 2*S1*J
@@ -342,7 +342,7 @@ library Vesta {
             // Z3 = ((Z1+Z2)^2 - Z1Z1 - Z2Z2)*H
             z3 := add(mload(add(p1, 0x40)), mload(add(p2, 0x40)))
             z3 := mulmod(z3, z3, P_MOD)
-            let doubleP :=mul(P_MOD, 2)
+            let doubleP := mul(P_MOD, 2)
             z3 := add(z3, sub(doubleP, add(z1z1, z2z2)))
             z3 := mulmod(z3, h, P_MOD)
         }
