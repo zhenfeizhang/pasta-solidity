@@ -7,8 +7,17 @@ contract TestVesta {
     constructor() {}
 
     // solhint-disable-next-line func-name-mixedcase
-    function P1() public pure returns (C.VestaAffinePoint memory) {
-        return C.P1();
+    function AffineGenerator() public pure returns (C.VestaAffinePoint memory) {
+        return C.AffineGenerator();
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function ProjectiveGenerator() public pure returns (C.VestaProjectivePoint memory) {
+        return C.ProjectiveGenerator();
+    }
+
+    function isInfinity(C.VestaProjectivePoint memory point) public pure returns (bool) {
+        return C.isInfinity(point);
     }
 
     function isInfinity(C.VestaAffinePoint memory point) public pure returns (bool) {
@@ -23,7 +32,23 @@ contract TestVesta {
         return C.negate(p);
     }
 
+    function negate(C.VestaProjectivePoint memory p)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory r)
+    {
+        return C.negate(p);
+    }
+
     function double(C.VestaAffinePoint memory p) public view returns (C.VestaAffinePoint memory) {
+        return C.double(p);
+    }
+
+    function double(C.VestaProjectivePoint memory p)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory)
+    {
         return C.double(p);
     }
 

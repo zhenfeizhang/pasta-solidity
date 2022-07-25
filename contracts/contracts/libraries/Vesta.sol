@@ -10,17 +10,17 @@ pragma solidity ^0.8.0;
 
 library Vesta {
     //
-    // Vesta curve:
+    // Vesta curve is a short Weierstrass curve with Basefield F_p and ScalarField F_r for:
     //   p = 28948022309329048855892746252171976963363056481941647379679742748393362948097
     //   r = 28948022309329048855892746252171976963363056481941560715954676764349967630337
-    // E has the equation:
+    // Vesta curve has the equation:
     //   E: y^2 = x^3 + 5
 
     uint256 public constant P_MOD =
         28948022309329048855892746252171976963363056481941647379679742748393362948097;
     uint256 public constant R_MOD =
         28948022309329048855892746252171976963363056481941560715954676764349967630337;
-
+    // 3/2 mod p
     uint256 private constant _THREE_OVER_TWO =
         14474011154664524427946373126085988481681528240970823689839871374196681474050;
 
@@ -29,14 +29,50 @@ library Vesta {
         uint256 y;
     }
 
+    struct VestaProjectivePoint {
+        uint256 x;
+        uint256 y;
+        uint256 z;
+    }
+
     /// @return the generator
     // solhint-disable-next-line func-name-mixedcase
-    function P1() internal pure returns (VestaAffinePoint memory) {
+    function AffineGenerator() internal pure returns (VestaAffinePoint memory) {
         return VestaAffinePoint(P_MOD - 1, 2);
     }
 
+    /// @return the generator
+    // solhint-disable-next-line func-name-mixedcase
+    function ProjectiveGenerator() internal pure returns (VestaProjectivePoint memory) {
+        return VestaProjectivePoint(P_MOD - 1, 2, 1);
+    }
+
+    /// @return the convert an affine point into projective
+    // solhint-disable-next-line func-name-mixedcase
+    function IntoAffine(VestaAffinePoint memory point)
+        internal
+        pure
+        returns (VestaProjectivePoint memory)
+    {
+        return VestaProjectivePoint(point.x, point.y, 1);
+    }
+
+    /// @return the convert a projective point into affine
+    // solhint-disable-next-line func-name-mixedcase
+    function IntoProjective(VestaProjectivePoint memory point)
+        internal
+        view
+        returns (VestaAffinePoint memory)
+    {
+        uint256 x = invert(point.z, P_MOD);
+        uint256 y = mulmod(point.y, x, P_MOD);
+        x = mulmod(point.x, x, P_MOD);
+
+        return VestaAffinePoint(x, y);
+    }
+
     /// @dev check if a VestaAffinePoint is Infinity
-    /// @notice precompile bn256Add at address(6) takes (0, 0) as VestaAffinePoint of Infinity,
+    /// @notice (0, 0) VestaAffinePoint of Infinity,
     /// some crypto libraries (such as arkwork) uses a boolean flag to mark PoI, and
     /// just use (0, 1) as affine coordinates (not on curve) to represents PoI.
     function isInfinity(VestaAffinePoint memory point) internal pure returns (bool result) {
@@ -44,6 +80,19 @@ library Vesta {
             let x := mload(point)
             let y := mload(add(point, 0x20))
             result := and(iszero(x), iszero(y))
+        }
+    }
+
+    /// @dev check if a VestaProjectivePoint is Infinity
+    /// @notice (0, 0, 0) VestaProjectivePoint of Infinity,
+    /// some crypto libraries (such as arkwork) uses a boolean flag to mark PoI, and
+    /// just use (0, 1, 0) as affine coordinates (not on curve) to represents PoI.
+    function isInfinity(VestaProjectivePoint memory point) internal pure returns (bool result) {
+        assembly {
+            let x := mload(point)
+            let y := mload(add(point, 0x20))
+            let z := mload(add(point, 0x20))
+            result := and(and(iszero(x), iszero(y)), iszero(z))
         }
     }
 
@@ -55,11 +104,91 @@ library Vesta {
         return VestaAffinePoint(p.x, P_MOD - (p.y % P_MOD));
     }
 
+    /// @return r the negation of p, i.e. p.add(p.negate()) should be zero.
+    function negate(VestaProjectivePoint memory p)
+        internal
+        pure
+        returns (VestaProjectivePoint memory)
+    {
+        if (isInfinity(p)) {
+            return p;
+        }
+        return VestaProjectivePoint(p.x, P_MOD - (p.y % P_MOD), p.z);
+    }
+
     /// @return res = -fr the negation of scalar field element.
     function negate(uint256 fr) internal pure returns (uint256 res) {
         return R_MOD - (fr % R_MOD);
     }
 
+    /// @return 2*point
+    // using the method https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl
+    function double(VestaProjectivePoint memory point)
+        internal
+        pure
+        returns (VestaProjectivePoint memory)
+    {
+        if (isInfinity(point)) {
+            return point;
+        }
+
+        // todo: improve memory usage
+        uint256 x = point.x;
+        uint256 y = point.y;
+        uint256 z = point.z;
+        uint256 w;
+        uint256 s;
+        uint256 tmp;
+        uint256 r;
+        uint256 rr;
+        uint256 b;
+        uint256 h;
+        uint256 xx;
+        uint256 yy;
+        uint256 zz;
+        uint256 doubleP = P_MOD << 1;
+
+        assembly {
+            // XX = X1^2
+            xx := mulmod(x, x, P_MOD)
+            // ZZ = Z1^2
+            zz := mulmod(z, z, P_MOD)
+            // w = a*ZZ+3*XX
+            // defer mod reduction
+            w := add(zz, mul(3, xx))
+            // s = 2*Y1*Z1
+            s := mulmod(mul(y, 2), z, P_MOD)
+            // ss = s^2
+            tmp := mulmod(s, s, P_MOD)
+            // sss = s*ss
+            zz := mulmod(tmp, s, P_MOD)
+            // R = Y1*s
+            r := mulmod(y, s, P_MOD)
+            // RR = R^2
+            rr := mulmod(r, r, P_MOD)
+            // B = (X1+R)^2-XX-RR
+            b := add(x, r)
+            b := mulmod(b, b, P_MOD)
+            tmp := add(xx, r)
+            b := addmod(b, sub(doubleP, tmp), P_MOD)
+            // h = w^2-2*B
+            h := mulmod(w, w, P_MOD)
+            tmp := mul(b, 2)
+            h := add(h, sub(doubleP, tmp))
+            // X3 = h*s
+            xx := mulmod(h, s, P_MOD)
+            // Y3 = w*(B-h)-2*RR
+            yy := add(b, sub(doubleP, h))
+            yy := mulmod(yy, w, P_MOD)
+            tmp := mul(r, 2)
+            yy := addmod(yy, sub(doubleP, tmp), P_MOD)
+            // Z3 = sss
+        }
+
+        return VestaProjectivePoint(xx, yy, zz);
+    }
+
+    /// @return 2*point
     function double(VestaAffinePoint memory point)
         internal
         view

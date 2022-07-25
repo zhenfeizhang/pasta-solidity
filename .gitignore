@@ -12,7 +12,7 @@ cache
 .direnv/
 
 # rust
-Cargo.lock
+# Cargo.lock
 target/
 
 # python / brownie

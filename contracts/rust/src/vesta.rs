@@ -62,6 +62,10 @@ async fn test_group_generators() -> Result<()> {
     let gen_sol: Point = contract.p1().call().await?.into();
     assert_eq!(gen_sol, gen.into());
 
+    let gen = Projective::prime_subgroup_generator();
+    let gen_sol: Point = contract.p1().call().await?.into();
+    assert_eq!(gen_sol, gen.into());
+
     Ok(())
 }
 
