@@ -136,56 +136,42 @@ library Vesta {
         uint256 x = point.x;
         uint256 y = point.y;
         uint256 z = point.z;
-        uint256 w;
-        uint256 s;
-        uint256 tmp;
-        uint256 r;
-        uint256 rr;
+        uint256 a;
         uint256 b;
-        uint256 h;
-        uint256 xx;
-        uint256 yy;
-        uint256 zz;
-        uint256 doubleP = P_MOD << 1;
+        uint256 c;
+        uint256 d;
+        uint256 e;
+        uint256 f;
+        uint256 p2 = P_MOD << 1;
 
         assembly {
-            // XX = X1^2
-            xx := mulmod(x, x, P_MOD)
-            // ZZ = Z1^2
-            zz := mulmod(z, z, P_MOD)
-            // w = a*ZZ+3*XX
-            // defer mod reduction
-            w := add(zz, mul(3, xx))
-            // s = 2*Y1*Z1
-            s := mulmod(mul(y, 2), z, P_MOD)
-            // ss = s^2
-            tmp := mulmod(s, s, P_MOD)
-            // sss = s*ss
-            zz := mulmod(tmp, s, P_MOD)
-            // R = Y1*s
-            r := mulmod(y, s, P_MOD)
-            // RR = R^2
-            rr := mulmod(r, r, P_MOD)
-            // B = (X1+R)^2-XX-RR
-            b := add(x, r)
-            b := mulmod(b, b, P_MOD)
-            tmp := add(xx, r)
-            b := addmod(b, sub(doubleP, tmp), P_MOD)
-            // h = w^2-2*B
-            h := mulmod(w, w, P_MOD)
-            tmp := mul(b, 2)
-            h := add(h, sub(doubleP, tmp))
-            // X3 = h*s
-            xx := mulmod(h, s, P_MOD)
-            // Y3 = w*(B-h)-2*RR
-            yy := add(b, sub(doubleP, h))
-            yy := mulmod(yy, w, P_MOD)
-            tmp := mul(r, 2)
-            yy := addmod(yy, sub(doubleP, tmp), P_MOD)
-            // Z3 = sss
+            // A = X1^2
+            a := mulmod(x, x, P_MOD)
+            // B = Y1^2
+            b := mulmod(y, y, P_MOD)
+            // C = B^2
+            c := mulmod(b, b, P_MOD)
+            // D = 2*((X1+B)^2-A-C)
+            d := add(x, b)
+            d := mulmod(d, d, P_MOD)
+            b := add(a, c)
+            d := add(d, sub(p2, b))
+            d := mulmod(d, 2, P_MOD)
+            // E = 3*A
+            e := mul(a, 3)
+            // F = E^2
+            f := mulmod(e, e, P_MOD)
+            // Z3 = 2*Y1*Z1
+            z := mulmod(mul(y, 2), z, P_MOD)
+            // X3 = F-2*D
+            x := addmod(f, sub(p2, mul(d, 2)), P_MOD)
+            // Y3 = E*(D-X3)-8*C
+            y := add(d, sub(P_MOD, x))
+            y := mulmod(e, y, P_MOD)
+            y := addmod(y, sub(P_MOD, mulmod(c, 8, P_MOD)), P_MOD)
         }
 
-        return VestaProjectivePoint(xx, yy, zz);
+        return VestaProjectivePoint(x, y, z);
     }
 
     /// @return 2*point

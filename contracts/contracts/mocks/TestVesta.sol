@@ -7,24 +7,24 @@ contract TestVesta {
     constructor() {}
 
     // solhint-disable-next-line func-name-mixedcase
-    function AffineGenerator() public pure returns (C.VestaAffinePoint memory) {
+    function affineGenerator() public pure returns (C.VestaAffinePoint memory) {
         return C.AffineGenerator();
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function ProjectiveGenerator() public pure returns (C.VestaProjectivePoint memory) {
+    function projectiveGenerator() public pure returns (C.VestaProjectivePoint memory) {
         return C.ProjectiveGenerator();
     }
 
-    function isInfinity(C.VestaProjectivePoint memory point) public pure returns (bool) {
+    function isProjectiveInfinity(C.VestaProjectivePoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }
 
-    function isInfinity(C.VestaAffinePoint memory point) public pure returns (bool) {
+    function isAffineInfinity(C.VestaAffinePoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }
 
-    function negate(C.VestaAffinePoint memory p)
+    function affineNegate(C.VestaAffinePoint memory p)
         public
         pure
         returns (C.VestaAffinePoint memory r)
@@ -32,7 +32,7 @@ contract TestVesta {
         return C.negate(p);
     }
 
-    function negate(C.VestaProjectivePoint memory p)
+    function projectiveNegate(C.VestaProjectivePoint memory p)
         public
         pure
         returns (C.VestaProjectivePoint memory r)
@@ -40,11 +40,15 @@ contract TestVesta {
         return C.negate(p);
     }
 
-    function double(C.VestaAffinePoint memory p) public view returns (C.VestaAffinePoint memory) {
+    function affineDouble(C.VestaAffinePoint memory p)
+        public
+        view
+        returns (C.VestaAffinePoint memory)
+    {
         return C.double(p);
     }
 
-    function double(C.VestaProjectivePoint memory p)
+    function projectiveDouble(C.VestaProjectivePoint memory p)
         public
         pure
         returns (C.VestaProjectivePoint memory)
