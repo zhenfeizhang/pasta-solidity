@@ -49,7 +49,7 @@ library Vesta {
 
     /// @return the convert an affine point into projective
     // solhint-disable-next-line func-name-mixedcase
-    function IntoAffine(VestaAffinePoint memory point)
+    function IntoProjective(VestaAffinePoint memory point)
         internal
         pure
         returns (VestaProjectivePoint memory)
@@ -59,7 +59,7 @@ library Vesta {
 
     /// @return the convert a projective point into affine
     // solhint-disable-next-line func-name-mixedcase
-    function IntoProjective(VestaProjectivePoint memory point)
+    function IntoAffine(VestaProjectivePoint memory point)
         internal
         view
         returns (VestaAffinePoint memory)
@@ -122,7 +122,6 @@ library Vesta {
     }
 
     /// @return 2*point
-    // using the method https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl
     function double(VestaProjectivePoint memory point)
         internal
         pure
@@ -142,7 +141,7 @@ library Vesta {
         uint256 d;
         uint256 e;
         uint256 f;
-        uint256 p2 = P_MOD << 1;
+        uint256 doubleP = P_MOD << 1;
 
         assembly {
             // A = X1^2
@@ -155,7 +154,7 @@ library Vesta {
             d := add(x, b)
             d := mulmod(d, d, P_MOD)
             b := add(a, c)
-            d := add(d, sub(p2, b))
+            d := add(d, sub(doubleP, b))
             d := mulmod(d, 2, P_MOD)
             // E = 3*A
             e := mul(a, 3)
@@ -164,7 +163,7 @@ library Vesta {
             // Z3 = 2*Y1*Z1
             z := mulmod(mul(y, 2), z, P_MOD)
             // X3 = F-2*D
-            x := addmod(f, sub(p2, mul(d, 2)), P_MOD)
+            x := addmod(f, sub(doubleP, mul(d, 2)), P_MOD)
             // Y3 = E*(D-X3)-8*C
             y := add(d, sub(P_MOD, x))
             y := mulmod(e, y, P_MOD)
@@ -275,6 +274,82 @@ library Vesta {
         return VestaAffinePoint(x3, y3);
     }
 
+    /// @return r the sum of two VestaAffinePoints
+    function add(VestaProjectivePoint memory p1, VestaProjectivePoint memory p2)
+        internal
+        pure
+        returns (VestaProjectivePoint memory)
+    {
+        if (isInfinity(p1)) {
+            return p2;
+        }
+
+        if (isInfinity(p2)) {
+            return p1;
+        }
+
+        uint256 x3;
+        uint256 y3;
+        uint256 z3;
+
+        // Z1Z1 = Z1^2
+        uint256 z1z1 = mulmod(p1.z, p1.z, P_MOD);
+        // Z2Z2 = Z2^2
+        uint256 z2z2 = mulmod(p2.z, p2.z, P_MOD);
+        // U1 = X1*Z2Z2
+        uint256 u1 = mulmod(p1.x, z2z2, P_MOD);
+        // U2 = X2*Z1Z1
+        uint256 u2 = mulmod(p2.x, z1z1, P_MOD);
+        // S1 = Y1*Z2*Z2Z2
+        uint256 s1 = mulmod(p1.y, p2.z, P_MOD);
+        s1 = mulmod(s1, z2z2, P_MOD);
+        // S2 = Y2*Z1*Z1Z1
+        uint256 s2 = mulmod(p2.y, p1.z, P_MOD);
+        s2 = mulmod(s2, z1z1, P_MOD);
+
+        if (u1 == u2) {
+            if (s1 == s2) {
+                return double(p1);
+            }
+        }
+
+        assembly {
+            // H = U2-U1
+            let h := add(u2, sub(P_MOD, u1))
+            // I = (2*H)^2
+            let i := addmod(h, h, P_MOD)
+            i := mulmod(i, i, P_MOD)
+            // J = H*I
+            let j := mulmod(h, i, P_MOD)
+            // r = 2*(S2-S1)
+            let r := add(s2, sub(P_MOD, s1))
+            r := addmod(r, r, P_MOD)
+            // V = U1*I
+            let v := mulmod(u1, i, P_MOD)
+
+            // X3 = r^2 - J - 2*V
+            x3 := mulmod(r, r, P_MOD)
+            let tripleP :=mul(P_MOD, 3)
+            x3 := addmod(x3, sub(tripleP, add(j, add(v, v))), P_MOD)
+
+            // Y3 = r*(V - X3) - 2*S1*J
+            y3 := add(v, sub(P_MOD, x3))
+            y3 := mulmod(r, y3, P_MOD)
+            s1 := mul(s1, 2)
+            s1 := mulmod(s1, j, P_MOD)
+            y3 := addmod(y3, sub(P_MOD, s1), P_MOD)
+
+            // Z3 = ((Z1+Z2)^2 - Z1Z1 - Z2Z2)*H
+            z3 := add(mload(add(p1, 0x40)), mload(add(p2, 0x40)))
+            z3 := mulmod(z3, z3, P_MOD)
+            let doubleP :=mul(P_MOD, 2)
+            z3 := add(z3, sub(doubleP, add(z1z1, z2z2)))
+            z3 := mulmod(z3, h, P_MOD)
+        }
+
+        return VestaProjectivePoint(x3, y3, z3);
+    }
+
     /// @return r the product of a VestaAffinePoint and a scalar, i.e.
     /// p == p.mul(1) and p.add(p) == p.mul(2) for all VestaAffinePoints p.
     function scalarMul(VestaAffinePoint memory p, uint256 s)
@@ -286,6 +361,28 @@ library Vesta {
         uint256 i = 0;
         VestaAffinePoint memory tmp = p;
         r = VestaAffinePoint(0, 0);
+
+        for (i = 0; i < 256; i++) {
+            bit = s & 1;
+            s /= 2;
+            if (bit == 1) {
+                r = add(r, tmp);
+            }
+            tmp = double(tmp);
+        }
+    }
+
+    /// @return r the product of a VestaProjectivePoint and a scalar, i.e.
+    /// p == p.mul(1) and p.add(p) == p.mul(2) for all VestaProjectivePoint p.
+    function scalarMul(VestaProjectivePoint memory p, uint256 s)
+        internal
+        pure
+        returns (VestaProjectivePoint memory r)
+    {
+        uint256 bit;
+        uint256 i = 0;
+        VestaProjectivePoint memory tmp = p;
+        r = VestaProjectivePoint(0, 0, 0);
 
         for (i = 0; i < 256; i++) {
             bit = s & 1;

@@ -16,6 +16,15 @@ contract TestVesta {
         return C.ProjectiveGenerator();
     }
 
+    // solhint-disable-next-line func-name-mixedcase
+    function toAffine(C.VestaProjectivePoint memory point)
+        public
+        view
+        returns (C.VestaAffinePoint memory)
+    {
+        return C.IntoAffine(point);
+    }
+
     function isProjectiveInfinity(C.VestaProjectivePoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }
@@ -56,7 +65,7 @@ contract TestVesta {
         return C.double(p);
     }
 
-    function add(C.VestaAffinePoint memory p1, C.VestaAffinePoint memory p2)
+    function affineAdd(C.VestaAffinePoint memory p1, C.VestaAffinePoint memory p2)
         public
         view
         returns (C.VestaAffinePoint memory)
@@ -64,10 +73,26 @@ contract TestVesta {
         return C.add(p1, p2);
     }
 
-    function scalarMul(C.VestaAffinePoint memory p, uint256 s)
+    function projectiveAdd(C.VestaProjectivePoint memory p1, C.VestaProjectivePoint memory p2)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory)
+    {
+        return C.add(p1, p2);
+    }
+
+    function affineScalarMul(C.VestaAffinePoint memory p, uint256 s)
         public
         view
         returns (C.VestaAffinePoint memory r)
+    {
+        return C.scalarMul(p, s);
+    }
+
+    function projectiveScalarMul(C.VestaProjectivePoint memory p, uint256 s)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory r)
     {
         return C.scalarMul(p, s);
     }
