@@ -25,6 +25,15 @@ contract TestVesta {
         return C.IntoAffine(point);
     }
 
+    // solhint-disable-next-line func-name-mixedcase
+    function toProjective(C.VestaAffinePoint memory point)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory)
+    {
+        return C.IntoProjective(point);
+    }
+
     function isProjectiveInfinity(C.VestaProjectivePoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }

@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use crate::types::VestaAffinePoint;
+use crate::types::VestaProjectivePoint;
 use crate::{
     assertion::Matcher,
     ethereum::{deploy, get_funded_deployer},
@@ -127,6 +129,48 @@ async fn test_info_affine() -> Result<()> {
     let gen_sol_affine = contract.to_affine(gen_sol).call().await?;
     assert_eq!(gen_sol_affine, gen.into());
 
+    let zero = Affine::zero();
+    let zero_sol = VestaProjectivePoint {
+        x: U256::from(0),
+        y: U256::from(0),
+        z: U256::from(0),
+    };
+    let zero_sol_affine = contract.to_affine(zero_sol).call().await?;
+    assert_eq!(zero_sol_affine, zero.into());
+
+    let p = Projective::rand(rng);
+    println!(
+        "gas cost: to affine: {}",
+        contract.to_affine(p.into()).estimate_gas().await?
+    );
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let p_sol: Affine = contract.to_affine(p.into()).call().await?.into();
+        assert_eq!(p_sol, p.into_affine());
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_info_projective() -> Result<()> {
+    let rng = &mut ark_std::test_rng();
+    let contract = deploy_contract().await?;
+
+    let gen = Projective::prime_subgroup_generator();
+    let gen_sol = contract.affine_generator().call().await?;
+    let gen_sol_affine = contract.to_projective(gen_sol).call().await?;
+    assert_eq!(gen_sol_affine, gen.into());
+
+    let zero = Projective::zero();
+    let zero_sol = VestaAffinePoint {
+        x: U256::from(0),
+        y: U256::from(0),
+    };
+    let zero_sol_affine = contract.to_projective(zero_sol).call().await?;
+    assert_eq!(zero_sol_affine, zero.into());
+
     let p = Projective::rand(rng);
     println!(
         "gas cost: to affine: {}",
@@ -232,6 +276,23 @@ async fn test_scalar_mul() -> Result<()> {
             .await?
             .into();
         assert_eq!(res.into_affine(), Group::mul(&p, &s).into_affine());
+    }
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let s = Fr::rand(rng);
+
+        let p_proj = contract
+            .to_projective(p.into_affine().into())
+            .call()
+            .await?;
+
+        let res: Projective = contract
+            .projective_scalar_mul(p_proj, field_to_u256(s))
+            .call()
+            .await?
+            .into();
+        assert_eq!(res.into_affine(), Group::mul(&p, &s));
     }
 
     Ok(())

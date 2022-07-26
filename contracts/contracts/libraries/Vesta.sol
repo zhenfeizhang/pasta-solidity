@@ -54,6 +54,10 @@ library Vesta {
         pure
         returns (VestaProjectivePoint memory)
     {
+        if (isInfinity(point)) {
+            return VestaProjectivePoint(0, 0, 0);
+        }
+
         return VestaProjectivePoint(point.x, point.y, 1);
     }
 
@@ -64,6 +68,10 @@ library Vesta {
         view
         returns (VestaAffinePoint memory)
     {
+        if (isInfinity(point)) {
+            return VestaAffinePoint(0, 0);
+        }
+
         uint256 x = invert(point.z, P_MOD);
         uint256 y = mulmod(point.y, x, P_MOD);
         x = mulmod(point.x, x, P_MOD);
@@ -329,7 +337,7 @@ library Vesta {
 
             // X3 = r^2 - J - 2*V
             x3 := mulmod(r, r, P_MOD)
-            let tripleP :=mul(P_MOD, 3)
+            let tripleP := mul(P_MOD, 3)
             x3 := addmod(x3, sub(tripleP, add(j, add(v, v))), P_MOD)
 
             // Y3 = r*(V - X3) - 2*S1*J
@@ -342,7 +350,7 @@ library Vesta {
             // Z3 = ((Z1+Z2)^2 - Z1Z1 - Z2Z2)*H
             z3 := add(mload(add(p1, 0x40)), mload(add(p2, 0x40)))
             z3 := mulmod(z3, z3, P_MOD)
-            let doubleP :=mul(P_MOD, 2)
+            let doubleP := mul(P_MOD, 2)
             z3 := add(z3, sub(doubleP, add(z1z1, z2z2)))
             z3 := mulmod(z3, h, P_MOD)
         }
@@ -402,7 +410,7 @@ library Vesta {
         returns (VestaAffinePoint memory r)
     {
         require(scalars.length == bases.length, "MSM error: length does not match");
-
+        
         r = scalarMul(bases[0], scalars[0]);
         for (uint256 i = 1; i < scalars.length; i++) {
             r = add(r, scalarMul(bases[i], scalars[i]));
