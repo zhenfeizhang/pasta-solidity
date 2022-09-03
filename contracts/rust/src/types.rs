@@ -1,12 +1,8 @@
 use ark_ff::{to_bytes, PrimeField, Zero};
-use ark_pallas::{Affine, Fq, Fr, Projective};
+use ark_pallas::{Affine, Fq, Fr};
 use ethers::prelude::*;
 
 abigen!(
-    AssetRegistry,
-    "../abi/contracts/AssetRegistry.sol/AssetRegistry/abi.json",
-    event_derives(serde::Deserialize, serde::Serialize);
-
     TestPallas,
     "../abi/contracts/mocks/TestPallas.sol/TestPallas/abi.json",
     event_derives(serde::Deserialize, serde::Serialize);
