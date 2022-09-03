@@ -3,7 +3,7 @@
 use crate::{
     assertion::Matcher,
     ethereum::{deploy, get_funded_deployer},
-    types::{field_to_u256, PallasPoint as Point, TestPallas},
+    types::{field_to_u256, PallasAffinePoint as Point, TestPallas},
 };
 use anyhow::Result;
 use ark_ec::msm::VariableBaseMSM;
@@ -37,12 +37,27 @@ async fn test_add() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
 
-    // test random group addition
+    let p1 = Projective::rand(rng);
+    let p2 = Projective::rand(rng);
+    println!(
+        "gas cost: addition: {}",
+        contract
+            .add(p1.into_affine().into(), p2.into_affine().into())
+            .estimate_gas()
+            .await?
+    );
+
     for _ in 0..10 {
-        let p1: Affine = Projective::rand(rng).into();
-        let p2: Affine = Projective::rand(rng).into();
-        let res: Point = contract.add(p1.into(), p2.into()).call().await?.into();
-        assert_eq!(res, (p1 + p2).into());
+        let p1 = Projective::rand(rng);
+        let p2 = Projective::rand(rng);
+        let res_rec = p1 + p2;
+
+        let res: Point = contract
+            .add(p1.into_affine().into(), p2.into_affine().into())
+            .call()
+            .await?
+            .into();
+        assert_eq!(res, res_rec.into_affine().into());
     }
 
     // test point of infinity, O_E + P = P
@@ -345,37 +360,6 @@ async fn test_doubling() -> Result<()> {
 
         let res: Point = contract.double(p.into_affine().into()).call().await?.into();
         assert_eq!(res, p2.into_affine().into());
-    }
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_addition() -> Result<()> {
-    let rng = &mut ark_std::test_rng();
-    let contract = deploy_contract().await?;
-
-    let p1 = Projective::rand(rng);
-    let p2 = Projective::rand(rng);
-    println!(
-        "gas cost: addition: {}",
-        contract
-            .add(p1.into_affine().into(), p2.into_affine().into())
-            .estimate_gas()
-            .await?
-    );
-
-    for _ in 0..10 {
-        let p1 = Projective::rand(rng);
-        let p2 = Projective::rand(rng);
-        let res_rec = p1 + p2;
-
-        let res: Point = contract
-            .add(p1.into_affine().into(), p2.into_affine().into())
-            .call()
-            .await?
-            .into();
-        assert_eq!(res, res_rec.into_affine().into());
     }
 
     Ok(())

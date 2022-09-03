@@ -1,9 +1,14 @@
 #![cfg(test)]
 
+use crate::types::VestaAffinePoint;
+use crate::types::VestaProjectivePoint;
 use crate::{
     assertion::Matcher,
     ethereum::{deploy, get_funded_deployer},
-    types::{field_to_u256, TestVesta, VestaPoint as Point},
+    types::{
+        field_to_u256, TestVesta, VestaAffinePoint as AffinePoint,
+        VestaProjectivePoint as ProjectivePoint,
+    },
 };
 use anyhow::Result;
 use ark_ec::msm::VariableBaseMSM;
@@ -37,18 +42,63 @@ async fn test_add() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
 
+    let p1 = Projective::rand(rng);
+    let p2 = Projective::rand(rng);
+    println!(
+        "gas cost: affine addition: {}",
+        contract
+            .affine_add(p1.into_affine().into(), p2.into_affine().into())
+            .estimate_gas()
+            .await?
+    );
+
+    let p1 = Projective::rand(rng);
+    let p2 = Projective::rand(rng);
+    println!(
+        "gas cost: projective addition: {}",
+        contract
+            .projective_add(p1.into(), p2.into())
+            .estimate_gas()
+            .await?
+    );
+
     // test random group addition
     for _ in 0..10 {
         let p1: Affine = Projective::rand(rng).into();
         let p2: Affine = Projective::rand(rng).into();
-        let res: Point = contract.add(p1.into(), p2.into()).call().await?.into();
+        let res: AffinePoint = contract
+            .affine_add(p1.into(), p2.into())
+            .call()
+            .await?
+            .into();
         assert_eq!(res, (p1 + p2).into());
+
+        let p1 = Projective::rand(rng);
+        let p2 = Projective::rand(rng);
+        let res: ProjectivePoint = contract
+            .projective_add(p1.into(), p2.into())
+            .call()
+            .await?
+            .into();
+        assert_eq!(res, (p1 + p2).into());
+
+        let p1 = Projective::rand(rng);
+        let res: ProjectivePoint = contract
+            .projective_add(p1.into(), p1.into())
+            .call()
+            .await?
+            .into();
+        assert_eq!(res, (p1 + p1).into());
     }
 
     // test point of infinity, O_E + P = P
     let zero = Affine::zero();
     let p: Affine = Projective::rand(rng).into();
-    let res: Point = contract.add(p.into(), zero.into()).call().await?.into();
+    let res: AffinePoint = contract
+        .affine_add(p.into(), zero.into())
+        .call()
+        .await?
+        .into();
     assert_eq!(res, p.into());
 
     Ok(())
@@ -59,8 +109,79 @@ async fn test_group_generators() -> Result<()> {
     let contract = deploy_contract().await?;
 
     let gen = Affine::prime_subgroup_generator();
-    let gen_sol: Point = contract.p1().call().await?.into();
+    let gen_sol: AffinePoint = contract.affine_generator().call().await?.into();
     assert_eq!(gen_sol, gen.into());
+
+    let gen = Projective::prime_subgroup_generator();
+    let gen_sol: ProjectivePoint = contract.projective_generator().call().await?.into();
+    assert_eq!(gen_sol, gen.into());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_info_affine() -> Result<()> {
+    let rng = &mut ark_std::test_rng();
+    let contract = deploy_contract().await?;
+
+    let gen = Affine::prime_subgroup_generator();
+    let gen_sol = contract.projective_generator().call().await?;
+    let gen_sol_affine = contract.to_affine(gen_sol).call().await?;
+    assert_eq!(gen_sol_affine, gen.into());
+
+    let zero = Affine::zero();
+    let zero_sol = VestaProjectivePoint {
+        x: U256::from(0),
+        y: U256::from(0),
+        z: U256::from(0),
+    };
+    let zero_sol_affine = contract.to_affine(zero_sol).call().await?;
+    assert_eq!(zero_sol_affine, zero.into());
+
+    let p = Projective::rand(rng);
+    println!(
+        "gas cost: to affine: {}",
+        contract.to_affine(p.into()).estimate_gas().await?
+    );
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let p_sol: Affine = contract.to_affine(p.into()).call().await?.into();
+        assert_eq!(p_sol, p.into_affine());
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_info_projective() -> Result<()> {
+    let rng = &mut ark_std::test_rng();
+    let contract = deploy_contract().await?;
+
+    let gen = Projective::prime_subgroup_generator();
+    let gen_sol = contract.affine_generator().call().await?;
+    let gen_sol_affine = contract.to_projective(gen_sol).call().await?;
+    assert_eq!(gen_sol_affine, gen.into());
+
+    let zero = Projective::zero();
+    let zero_sol = VestaAffinePoint {
+        x: U256::from(0),
+        y: U256::from(0),
+    };
+    let zero_sol_affine = contract.to_projective(zero_sol).call().await?;
+    assert_eq!(zero_sol_affine, zero.into());
+
+    let p = Projective::rand(rng);
+    println!(
+        "gas cost: to affine: {}",
+        contract.to_affine(p.into()).estimate_gas().await?
+    );
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let p_sol: Affine = contract.to_affine(p.into()).call().await?.into();
+        assert_eq!(p_sol, p.into_affine());
+    }
 
     Ok(())
 }
@@ -71,10 +192,19 @@ async fn test_is_infinity() -> Result<()> {
     let contract = deploy_contract().await?;
 
     let zero = Affine::zero();
-    assert!(contract.is_infinity(zero.into()).call().await?);
+    assert!(contract.is_affine_infinity(zero.into()).call().await?);
+    let zero = zero.into_projective();
+    assert!(contract.is_projective_infinity(zero.into()).call().await?);
     for _ in 0..10 {
         let non_zero: Affine = Projective::rand(rng).into();
-        assert!(!contract.is_infinity(non_zero.into()).call().await?);
+        assert!(!contract.is_affine_infinity(non_zero.into()).call().await?);
+        let non_zero = non_zero.into_projective();
+        assert!(
+            !contract
+                .is_projective_infinity(non_zero.into())
+                .call()
+                .await?
+        );
     }
 
     Ok(())
@@ -87,7 +217,12 @@ async fn test_negate() -> Result<()> {
 
     for _ in 0..10 {
         let p: Affine = Projective::rand(rng).into();
-        let minus_p_sol: Point = contract.negate(p.into()).call().await?.into();
+        let minus_p_sol: AffinePoint = contract.affine_negate(p.into()).call().await?.into();
+        assert_eq!(minus_p_sol, (-p).into());
+
+        let p = Projective::rand(rng);
+        let minus_p_sol: ProjectivePoint =
+            contract.projective_negate(p.into()).call().await?.into();
         assert_eq!(minus_p_sol, (-p).into());
     }
 
@@ -99,16 +234,65 @@ async fn test_scalar_mul() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
 
+    let p = Projective::rand(rng);
+    let s = Fr::rand(rng);
+    println!(
+        "gas cost: affine scalar mul: {}",
+        contract
+            .affine_scalar_mul(p.into_affine().into(), field_to_u256(s))
+            .estimate_gas()
+            .await?
+    );
+
+    let p = Projective::rand(rng);
+    let s = Fr::rand(rng);
+    println!(
+        "gas cost: projective scalar mul: {}",
+        contract
+            .projective_scalar_mul(p.into(), field_to_u256(s))
+            .estimate_gas()
+            .await?
+    );
+
     for _ in 0..10 {
         let p = Projective::rand(rng);
         let s = Fr::rand(rng);
 
-        let res: Point = contract
-            .scalar_mul(p.into_affine().into(), field_to_u256(s))
+        let res: AffinePoint = contract
+            .affine_scalar_mul(p.into_affine().into(), field_to_u256(s))
             .call()
             .await?
             .into();
         assert_eq!(res, Group::mul(&p, &s).into_affine().into());
+    }
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let s = Fr::rand(rng);
+
+        let res: Projective = contract
+            .projective_scalar_mul(p.into(), field_to_u256(s))
+            .call()
+            .await?
+            .into();
+        assert_eq!(res.into_affine(), Group::mul(&p, &s).into_affine());
+    }
+
+    for _ in 0..10 {
+        let p = Projective::rand(rng);
+        let s = Fr::rand(rng);
+
+        let p_proj = contract
+            .to_projective(p.into_affine().into())
+            .call()
+            .await?;
+
+        let res: Projective = contract
+            .projective_scalar_mul(p_proj, field_to_u256(s))
+            .call()
+            .await?
+            .into();
+        assert_eq!(res.into_affine(), Group::mul(&p, &s));
     }
 
     Ok(())
@@ -123,13 +307,22 @@ async fn test_multi_scalar_mul() -> Result<()> {
         let p_rust: Vec<Affine> = (0..length)
             .map(|_| Projective::rand(rng).into_affine())
             .collect();
-        let p_solidity: Vec<Point> = p_rust.iter().map(|&x| x.into()).collect();
+        let p_solidity: Vec<AffinePoint> = p_rust.iter().map(|&x| x.into()).collect();
 
         let s_rust: Vec<Fr> = (0..length).map(|_| Fr::rand(rng)).collect();
         let s_solidity: Vec<U256> = s_rust.iter().map(|&x| field_to_u256(x)).collect();
         let s_rust: Vec<_> = s_rust.iter().map(|&x| x.into_repr()).collect();
 
-        let res: Point = contract
+        println!(
+            "gas cost: {} msm: {}",
+            length,
+            contract
+                .test_multi_scalar_mul(p_solidity.clone(), s_solidity.clone())
+                .estimate_gas()
+                .await?
+        );
+
+        let res: AffinePoint = contract
             .test_multi_scalar_mul(p_solidity, s_solidity)
             .call()
             .await?
@@ -194,7 +387,7 @@ async fn test_validate_curve_point() -> Result<()> {
 
     async fn should_fail_validation(
         contract: &TestVesta<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
-        bad_p: Point,
+        bad_p: AffinePoint,
     ) {
         contract
             .validate_curve_point(bad_p)
@@ -214,12 +407,12 @@ async fn test_validate_curve_point() -> Result<()> {
     should_fail_validation(&contract, bad_p.into()).await;
 
     // x > p should fail
-    let mut bad_p: Point = p.clone().into();
+    let mut bad_p: AffinePoint = p.clone().into();
     bad_p.x = U256::MAX;
     should_fail_validation(&contract, bad_p).await;
 
     // y > p should fail
-    let mut bad_p: Point = p.clone().into();
+    let mut bad_p: AffinePoint = p.clone().into();
     bad_p.y = U256::MAX;
     should_fail_validation(&contract, bad_p).await;
 
@@ -312,12 +505,34 @@ async fn test_doubling() -> Result<()> {
     let rng = &mut ark_std::test_rng();
     let contract = deploy_contract().await?;
 
+    let p = Projective::rand(rng);
+    println!(
+        "gas cost: affine doubling: {}",
+        contract
+            .affine_double(p.into_affine().into())
+            .estimate_gas()
+            .await?
+    );
+    println!(
+        "gas cost: projective doubling: {}",
+        contract.projective_double(p.into()).estimate_gas().await?
+    );
+
     for _ in 0..10 {
         let p = Projective::rand(rng);
         let p2 = ProjectiveCurve::double(&p);
 
-        let res: Point = contract.double(p.into_affine().into()).call().await?.into();
+        let res: AffinePoint = contract
+            .affine_double(p.into_affine().into())
+            .call()
+            .await?
+            .into();
         assert_eq!(res, p2.into_affine().into());
+
+        let res: ProjectivePoint = contract.projective_double(p.into()).call().await?;
+        let res = Projective::from(res);
+
+        assert_eq!(res, p2);
     }
 
     Ok(())

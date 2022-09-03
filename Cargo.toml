@@ -2,9 +2,6 @@
 
 members = [
     "contracts/rust",
-    # "doc/workflow",
-    # "relayer",
-    # "wallet",
 ]
 
 # Commit after the pinned one below breaks ethers-rs compiliation.

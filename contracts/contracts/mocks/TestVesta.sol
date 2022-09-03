@@ -7,34 +7,101 @@ contract TestVesta {
     constructor() {}
 
     // solhint-disable-next-line func-name-mixedcase
-    function P1() public pure returns (C.VestaPoint memory) {
-        return C.P1();
+    function affineGenerator() public pure returns (C.VestaAffinePoint memory) {
+        return C.AffineGenerator();
     }
 
-    function isInfinity(C.VestaPoint memory point) public pure returns (bool) {
+    // solhint-disable-next-line func-name-mixedcase
+    function projectiveGenerator() public pure returns (C.VestaProjectivePoint memory) {
+        return C.ProjectiveGenerator();
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function toAffine(C.VestaProjectivePoint memory point)
+        public
+        view
+        returns (C.VestaAffinePoint memory)
+    {
+        return C.IntoAffine(point);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function toProjective(C.VestaAffinePoint memory point)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory)
+    {
+        return C.IntoProjective(point);
+    }
+
+    function isProjectiveInfinity(C.VestaProjectivePoint memory point) public pure returns (bool) {
         return C.isInfinity(point);
     }
 
-    function negate(C.VestaPoint memory p) public pure returns (C.VestaPoint memory r) {
+    function isAffineInfinity(C.VestaAffinePoint memory point) public pure returns (bool) {
+        return C.isInfinity(point);
+    }
+
+    function affineNegate(C.VestaAffinePoint memory p)
+        public
+        pure
+        returns (C.VestaAffinePoint memory r)
+    {
         return C.negate(p);
     }
 
-    function double(C.VestaPoint memory p) public view returns (C.VestaPoint memory) {
+    function projectiveNegate(C.VestaProjectivePoint memory p)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory r)
+    {
+        return C.negate(p);
+    }
+
+    function affineDouble(C.VestaAffinePoint memory p)
+        public
+        view
+        returns (C.VestaAffinePoint memory)
+    {
         return C.double(p);
     }
 
-    function add(C.VestaPoint memory p1, C.VestaPoint memory p2)
+    function projectiveDouble(C.VestaProjectivePoint memory p)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory)
+    {
+        return C.double(p);
+    }
+
+    function affineAdd(C.VestaAffinePoint memory p1, C.VestaAffinePoint memory p2)
         public
         view
-        returns (C.VestaPoint memory)
+        returns (C.VestaAffinePoint memory)
     {
         return C.add(p1, p2);
     }
 
-    function scalarMul(C.VestaPoint memory p, uint256 s)
+    function projectiveAdd(C.VestaProjectivePoint memory p1, C.VestaProjectivePoint memory p2)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory)
+    {
+        return C.add(p1, p2);
+    }
+
+    function affineScalarMul(C.VestaAffinePoint memory p, uint256 s)
         public
         view
-        returns (C.VestaPoint memory r)
+        returns (C.VestaAffinePoint memory r)
+    {
+        return C.scalarMul(p, s);
+    }
+
+    function projectiveScalarMul(C.VestaProjectivePoint memory p, uint256 s)
+        public
+        pure
+        returns (C.VestaProjectivePoint memory r)
     {
         return C.scalarMul(p, s);
     }
@@ -47,7 +114,7 @@ contract TestVesta {
         return C.invert(fq, C.P_MOD);
     }
 
-    function validateCurvePoint(C.VestaPoint memory point) public pure {
+    function validateCurvePoint(C.VestaAffinePoint memory point) public pure {
         C.validateCurvePoint(point);
     }
 
@@ -59,7 +126,7 @@ contract TestVesta {
         return C.fromLeBytesModOrder(leBytes);
     }
 
-    function isYNegative(C.VestaPoint memory p) public pure returns (bool) {
+    function isYNegative(C.VestaAffinePoint memory p) public pure returns (bool) {
         return C.isYNegative(p);
     }
 
@@ -71,10 +138,10 @@ contract TestVesta {
         return C.powSmall(base, exponent, modulus);
     }
 
-    function testMultiScalarMul(C.VestaPoint[] memory bases, uint256[] memory scalars)
+    function testMultiScalarMul(C.VestaAffinePoint[] memory bases, uint256[] memory scalars)
         public
         view
-        returns (C.VestaPoint memory)
+        returns (C.VestaAffinePoint memory)
     {
         return C.multiScalarMul(bases, scalars);
     }
