@@ -12,4 +12,5 @@ Solidity implementation of Pasta curves, with test vectors from Arkworks.
 - `on curve testing`: 22724
 - `doubling`: 24812
 - `addition`: 26155
-- `scalar mul`: 940148 (variable depending on the bits of scalars)
+- `projective scalar mul`: 389487
+- `affine scalar mul`: 890704

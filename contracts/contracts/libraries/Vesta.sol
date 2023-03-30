@@ -410,7 +410,7 @@ library Vesta {
         returns (VestaAffinePoint memory r)
     {
         require(scalars.length == bases.length, "MSM error: length does not match");
-        
+
         r = scalarMul(bases[0], scalars[0]);
         for (uint256 i = 1; i < scalars.length; i++) {
             r = add(r, scalarMul(bases[i], scalars[i]));

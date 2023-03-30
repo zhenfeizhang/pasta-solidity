@@ -1,5 +1,4 @@
 use ark_ff::{to_bytes, PrimeField, Zero};
-use ark_pallas::{Affine, Fq, Fr};
 use ethers::prelude::*;
 
 abigen!(
@@ -16,10 +15,16 @@ abigen!(
     event_derives(serde::Deserialize, serde::Serialize);
 );
 
-impl From<Affine> for PallasAffinePoint {
-    fn from(p: Affine) -> Self {
+// ========================================================
+//
+// pallas curve
+//
+// ========================================================
+
+impl From<ark_pallas::Affine> for PallasAffinePoint {
+    fn from(p: ark_pallas::Affine) -> Self {
         if p.is_zero() {
-            // Solidity precompile have a different affine repr for PallasAffinePoint of Infinity
+            // Solidity precompile have a different affine repr for VestaAffinePoint of Infinity
             Self {
                 x: U256::from(0),
                 y: U256::from(0),
@@ -32,10 +37,28 @@ impl From<Affine> for PallasAffinePoint {
         }
     }
 }
+impl From<ark_pallas::Projective> for PallasProjectivePoint {
+    fn from(p: ark_pallas::Projective) -> Self {
+        if p.is_zero() {
+            // Solidity precompile have a different affine repr for PallasAffinePoint of Infinity
+            Self {
+                x: U256::from(0),
+                y: U256::from(0),
+                z: U256::from(0),
+            }
+        } else {
+            Self {
+                x: U256::from_little_endian(&to_bytes!(p.x).unwrap()[..]),
+                y: U256::from_little_endian(&to_bytes!(p.y).unwrap()[..]),
+                z: U256::from_little_endian(&to_bytes!(p.z).unwrap()[..]),
+            }
+        }
+    }
+}
 
-impl From<(Fq, Fq)> for PallasAffinePoint {
-    fn from(p: (Fq, Fq)) -> Self {
-        let zero = Affine::zero();
+impl From<(ark_pallas::Fq, ark_pallas::Fq)> for PallasAffinePoint {
+    fn from(p: (ark_pallas::Fq, ark_pallas::Fq)) -> Self {
+        let zero = ark_pallas::Affine::zero();
         if p.0 == zero.x && p.1 == zero.y {
             // Solidity repr of infinity/zero
             Self {
@@ -51,7 +74,27 @@ impl From<(Fq, Fq)> for PallasAffinePoint {
     }
 }
 
-impl From<PallasAffinePoint> for Affine {
+impl From<(ark_pallas::Fq, ark_pallas::Fq, ark_pallas::Fq)> for PallasProjectivePoint {
+    fn from(p: (ark_pallas::Fq, ark_pallas::Fq, ark_pallas::Fq)) -> Self {
+        let zero = ark_pallas::Affine::zero();
+        if p.0 == zero.x && p.1 == zero.y {
+            // Solidity repr of infinity/zero
+            Self {
+                x: U256::from(0),
+                y: U256::from(0),
+                z: U256::from(0),
+            }
+        } else {
+            Self {
+                x: U256::from_little_endian(&to_bytes!(p.0).unwrap()[..]),
+                y: U256::from_little_endian(&to_bytes!(p.1).unwrap()[..]),
+                z: U256::from_little_endian(&to_bytes!(p.2).unwrap()[..]),
+            }
+        }
+    }
+}
+
+impl From<PallasAffinePoint> for ark_pallas::Affine {
     fn from(p_sol: PallasAffinePoint) -> Self {
         if p_sol.x.is_zero() && p_sol.y.is_zero() {
             Self::zero()
@@ -60,6 +103,26 @@ impl From<PallasAffinePoint> for Affine {
         }
     }
 }
+
+impl From<PallasProjectivePoint> for ark_pallas::Projective {
+    fn from(p_sol: PallasProjectivePoint) -> Self {
+        if p_sol.x.is_zero() && p_sol.y.is_zero() && p_sol.z.is_zero() {
+            Self::zero()
+        } else {
+            Self::new(
+                u256_to_field(p_sol.x),
+                u256_to_field(p_sol.y),
+                u256_to_field(p_sol.z),
+            )
+        }
+    }
+}
+
+// ========================================================
+//
+// vesta curve
+//
+// ========================================================
 
 impl From<ark_vesta::Affine> for VestaAffinePoint {
     fn from(p: ark_vesta::Affine) -> Self {
@@ -97,8 +160,8 @@ impl From<ark_vesta::Projective> for VestaProjectivePoint {
     }
 }
 
-impl From<(Fr, Fr)> for VestaAffinePoint {
-    fn from(p: (Fr, Fr)) -> Self {
+impl From<(ark_vesta::Fq, ark_vesta::Fq)> for VestaAffinePoint {
+    fn from(p: (ark_vesta::Fq, ark_vesta::Fq)) -> Self {
         let zero = ark_vesta::Affine::zero();
         if p.0 == zero.x && p.1 == zero.y {
             // Solidity repr of infinity/zero
@@ -115,8 +178,8 @@ impl From<(Fr, Fr)> for VestaAffinePoint {
     }
 }
 
-impl From<(Fr, Fr, Fr)> for VestaProjectivePoint {
-    fn from(p: (Fr, Fr, Fr)) -> Self {
+impl From<(ark_vesta::Fq, ark_vesta::Fq, ark_vesta::Fq)> for VestaProjectivePoint {
+    fn from(p: (ark_vesta::Fq, ark_vesta::Fq, ark_vesta::Fq)) -> Self {
         let zero = ark_vesta::Affine::zero();
         if p.0 == zero.x && p.1 == zero.y {
             // Solidity repr of infinity/zero
